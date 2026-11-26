@@ -1,0 +1,45 @@
+{
+  "name": "it-tools-desktop",
+  "productName": "IT-Tools",
+  "version": "1.0.0",
+  "description": "IT-Tools desktop wrapper - offline developer toolbox",
+  "main": "main.js",
+  "author": "wcl97",
+  "license": "GPL-3.0",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable --publish never"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.wcl97.ittools.desktop",
+    "productName": "IT-Tools",
+    "files": [
+      "main.js",
+      "renderer/**/*",
+      "build/icon.ico"
+    ],
+    "directories": {
+      "output": "../dist-electron",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "IT-Tools-${version}-portable.exe"
+    },
+    "compression": "maximum"
+  }
+}

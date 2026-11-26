@@ -1,0 +1,68 @@
+name: Build IT-Tools EXE
+
+on:
+  # 手动触发：仓库 Actions -> Build IT-Tools EXE -> Run workflow
+  workflow_dispatch:
+  # 推送到 main 自动触发
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static site
+        run: pnpm exec vite build
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+
+      - name: Prepare electron wrapper (copy dist)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path dist\index.html)) { Write-Error "Vite build output missing!"; exit 1 }
+          New-Item -ItemType Directory -Force -Path electron\renderer | Out-Null
+          Copy-Item -Path dist\* -Destination electron\renderer -Recurse -Force
+          Write-Host "Renderer files copied. Total size:"
+          "{0:N1} MB" -f ((Get-ChildItem electron\renderer -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB)
+
+      - name: Install electron dependencies
+        working-directory: electron
+        run: npm install --no-audit --no-fund
+
+      - name: Package Windows EXE (electron-builder)
+        working-directory: electron
+        run: npx electron-builder --win portable --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Verify output
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist-electron -Filter *.exe -Recurse | Select-Object -First 1
+          if (-not $exe) { Write-Error "No EXE produced!"; exit 1 }
+          Write-Host "Built: $($exe.Name) - $([math]::Round($exe.Length/1MB,1)) MB"
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: IT-Tools-windows-x64
+          path: dist-electron/*.exe
+          retention-days: 30
